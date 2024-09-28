@@ -4,16 +4,16 @@
 Club@        activeClub;
 Club@[]      clubs;
 bool         getting            = false;
-bool         hasClub            = false;
+bool         clubAccess            = false;
 const float  scale              = UI::GetScale();
 bool         switchToActiveClub = false;
 const string title              = "\\$0B9" + Icons::Random + "\\$G Mixed Club Campaigns";
 string[]     uids;
 
 void Main() {
-    hasClub = Permissions::CreateClub();
+    clubAccess = Permissions::CreateClub();
 
-    if (!hasClub) {
+    if (!clubAccess) {
         const string msg = "This plugin requires club access.";
         warn(msg);
         UI::ShowNotification(title, msg, vec4(1.0f, 0.3f, 0.0f, 1.0f));
@@ -25,7 +25,7 @@ void Main() {
 
 void Render() {
     if (false
-        || !hasClub
+        || !clubAccess
         || !S_Enabled
         || (S_HideWithGame && !UI::IsGameUIVisible())
         || (S_HideWithOP && !UI::IsOverlayShown())
@@ -102,7 +102,7 @@ void Render() {
 }
 
 void RenderMenu() {
-    if (!hasClub)
+    if (!clubAccess)
         return;
 
     if (UI::MenuItem(title, "", S_Enabled))
