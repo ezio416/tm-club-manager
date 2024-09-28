@@ -37,7 +37,7 @@ namespace API {
         @activeClub = null;
 
         while (int(clubs.Length) != clubCount) {
-            print("clubCount: " + clubCount + " | offset: " + offset);
+            // print("clubCount: " + clubCount + " | offset: " + offset);
 
             Net::HttpRequest@ req = GetAsync(
                 audienceLive,

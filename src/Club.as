@@ -39,7 +39,7 @@ class Club {
         campaigns = {};
 
         while (int(campaigns.Length) != itemCount) {
-            print("itemCount: " + itemCount + " | offset: " + offset);
+            // print("itemCount: " + itemCount + " | offset: " + offset);
 
             Net::HttpRequest@ req = API::GetAsync(
                 API::audienceLive,
@@ -47,7 +47,7 @@ class Club {
             );
 
             Json::Value@ json = req.Json();
-            print(Json::Write(json));
+            // print(Json::Write(json));
 
             if (CheckJsonType(json)) {
                 if (json.HasKey("itemCount"))

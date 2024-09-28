@@ -149,7 +149,36 @@ void Render() {
                 }
 
                 if (UI::BeginTabItem(activeCampaign.nameFormatted, open, flags)) {
-                    UI::Text(activeCampaign.nameStripped);
+                    UI::BeginDisabled(API::getting || activeCampaign.getting);
+                    if (UI::Button(Icons::Download + " Get Maps"))
+                        startnew(CoroutineFunc(activeCampaign.GetMapsAsync));
+                    UI::EndDisabled();
+
+                    UI::SameLine();
+                    UI::Text("Maps: " + activeCampaign.uids.Length);
+
+                    if (UI::BeginTable("##table-maps", 1, UI::TableFlags::RowBg | UI::TableFlags::ScrollY)) {
+                        UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.0f, 0.0f, 0.0f, 0.5f));
+
+                        UI::TableSetupScrollFreeze(0, 1);
+                        UI::TableSetupColumn("uid");
+                        UI::TableHeadersRow();
+
+                        UI::ListClipper clipper(activeCampaign.uids.Length);
+                        while (clipper.Step()) {
+                            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+                                const string uid = activeCampaign.uids[i];
+
+                                UI::TableNextRow();
+
+                                UI::TableNextColumn();
+                                UI::Text(uid);
+                            }
+                        }
+
+                        UI::PopStyleColor();
+                        UI::EndTable();
+                    }
 
                     UI::EndTabItem();
                 }
