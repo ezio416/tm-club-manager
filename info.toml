@@ -1,0 +1,8 @@
+[meta]
+name = "Mixed Club Campaigns"
+author = "Ezio"
+category = "Utilities"
+version = "0.1.0"
+
+[script]
+dependencies = [ "NadeoServices" ]
