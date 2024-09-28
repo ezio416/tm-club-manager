@@ -2,34 +2,19 @@
 // m 2024-09-27
 
 class Club {
-    bool      admin;
-    string    author;
-    Campaign@ campaigns;
-    int64     creationTimestamp;
-    string    description;
-    int64     editionTimestamp;
-    uint      id;
-    string    latestEditor;
-    string    name;
-    string    nameFormatted;
-    string    nameStripped;
-    uint      popularity;
-    string    state;
-    string    tag;
-    string    tagFormatted;
-    string    tagStripped;
-    bool      verified;
+    bool        admin;
+    Campaign@[] campaigns;
+    bool        getting = false;
+    uint        id;
+    string      name;
+    string      nameFormatted;
+    string      nameStripped;
 
     Club(Json::Value@ club) {
-        author            = string(club["authorAccountId"]      );
-        creationTimestamp = int64 (club["creationTimestamp"]    );
-        description       = string(club["description"]          ).Trim();
-        editionTimestamp  = int64 (club["editionTimestamp"]     );
-        id                = uint  (club["id"]                   );
-        latestEditor      = string(club["latestEditorAccountId"]);
-        popularity        = uint  (club["popularityLevel"]      );
-        state             = string(club["state"]                );
-        verified          = bool  (club["verified"]             );
+        if (club.GetType() != Json::Type::Object)
+            throw("club is not an object!");
+
+        id = uint(club["id"]);
 
         const string[] adminRoles = { "Creator", "Admin" };
         admin = adminRoles.Find(string(club["role"])) != -1;
@@ -37,13 +22,63 @@ class Club {
         name = string(club["name"]).Trim();
         nameFormatted = Text::OpenplanetFormatCodes(name).Trim();
         nameStripped  = Text::StripFormatCodes(name).Trim();
-
-        tag = string(club["tag"]).Trim();
-        tagFormatted = Text::OpenplanetFormatCodes(tag).Trim();
-        tagStripped  = Text::StripFormatCodes(tag).Trim();
     }
 
-    void GetActivitiesAsync() {
-        ;
+    void GetCampaignsAsync() {
+        while (getting)
+            yield();
+
+        getting = true;
+
+        int        itemCount = -1;
+        const uint length    = 20;
+        uint       offset    = 0;
+
+        trace("getting campaigns for club \"" + nameStripped + "\"");
+
+        campaigns = {};
+
+        while (int(campaigns.Length) != itemCount) {
+            print("itemCount: " + itemCount + " | offset: " + offset);
+
+            Net::HttpRequest@ req = API::GetAsync(
+                API::audienceLive,
+                NadeoServices::BaseURLLive() + "/api/token/club/" + id + "/activity?length=" + length + "&offset=" + offset + "&active=true"
+            );
+
+            Json::Value@ json = req.Json();
+            print(Json::Write(json));
+
+            if (CheckJsonType(json)) {
+                if (json.HasKey("itemCount"))
+                    itemCount = int(json["itemCount"]);
+
+                Json::Value@ activityList = GetJsonValue(json, "activityList", Json::Type::Array);
+                if (activityList !is null) {
+                    if (activityList.Length == 0)
+                        break;
+
+                    for (uint i = 0; i < activityList.Length; i++) {
+                        try {
+                            campaigns.InsertLast(Campaign(activityList[i]));
+                        } catch {
+                            warn(getExceptionInfo());
+                        }
+                    }
+                } else {
+                    warn("something went wrong while getting campaigns for club \"" + nameStripped + "\"");
+                    break;
+                }
+            }
+
+            offset += length;
+        }
+
+        for (uint i = 0; i < campaigns.Length; i++)
+            @campaigns[i].club = @this;
+
+        trace("got campaigns for club \"" + nameStripped + "\" (" + campaigns.Length + ")");
+
+        getting = false;
     }
 }

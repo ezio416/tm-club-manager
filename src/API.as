@@ -3,6 +3,7 @@
 
 namespace API {
     const string audienceLive = "NadeoLiveServices";
+    bool         getting      = false;
     uint64       lastRequest  = 0;
     const uint64 minimumWait  = 1000;
 
@@ -26,12 +27,14 @@ namespace API {
 
     void GetMyClubsAsync() {
         int        clubCount = -1;
-        const uint length    = 2;
+        const uint length    = 20;
         uint       offset    = 0;
 
         trace("getting my clubs");
 
         clubs = {};
+        @activeCampaign = null;
+        @activeClub = null;
 
         while (int(clubs.Length) != clubCount) {
             print("clubCount: " + clubCount + " | offset: " + offset);
@@ -43,13 +46,22 @@ namespace API {
 
             Json::Value@ json = req.Json();
 
-            if (json.GetType() == Json::Type::Object) {
+            if (CheckJsonType(json)) {
                 if (json.HasKey("clubCount"))
-                    clubCount = uint(json["clubCount"]);
+                    clubCount = int(json["clubCount"]);
 
-                if (json.HasKey("clubList") && json["clubList"].GetType() == Json::Type::Array) {
-                    for (uint i = 0; i < json["clubList"].Length; i++)
-                        clubs.InsertLast(Club(json["clubList"][i]));
+                Json::Value@ clubList = GetJsonValue(json, "clubList", Json::Type::Array);
+                if (clubList !is null) {
+                    if (clubList.Length == 0)
+                        break;
+
+                    for (uint i = 0; i < clubList.Length; i++) {
+                        try {
+                            clubs.InsertLast(Club(clubList[i]));
+                        } catch {
+                            warn(getExceptionInfo());
+                        }
+                    }
                 } else {
                     warn("something went wrong while getting my clubs");
                     break;

@@ -1,13 +1,14 @@
 // c 2024-09-27
 // m 2024-09-27
 
+Campaign@    activeCampaign;
 Club@        activeClub;
 Club@[]      clubs;
-bool         getting            = false;
-bool         clubAccess            = false;
-const float  scale              = UI::GetScale();
-bool         switchToActiveClub = false;
-const string title              = "\\$0B9" + Icons::Random + "\\$G Mixed Club Campaigns";
+bool         clubAccess             = false;
+const float  scale                  = UI::GetScale();
+bool         switchToActiveCampaign = false;
+bool         switchToActiveClub     = false;
+const string title                  = "\\$0B9" + Icons::Random + "\\$G Mixed Club Campaigns";
 string[]     uids;
 
 void Main() {
@@ -33,9 +34,9 @@ void Render() {
         return;
 
     if (UI::Begin(title, S_Enabled, UI::WindowFlags::None)) {
-        UI::BeginTabBar("tab-bar");
+        UI::BeginTabBar("tabbar-main");
             if (UI::BeginTabItem(Icons::ListUl + " Club List")) {
-                UI::BeginDisabled(getting);
+                UI::BeginDisabled(API::getting);
                 if (UI::Button(Icons::Download + " Get My Clubs"))
                     startnew(API::GetMyClubsAsync);
                 UI::EndDisabled();
@@ -61,6 +62,7 @@ void Render() {
 
                             UI::TableNextColumn();
                             if (UI::Selectable(club.nameFormatted, false, UI::SelectableFlags::SpanAllColumns)) {
+                                @activeCampaign = null;
                                 @activeClub = @club;
                                 switchToActiveClub = true;
                             }
@@ -83,17 +85,77 @@ void Render() {
             if (activeClub !is null) {
                 bool open = true;
 
-                if (UI::BeginTabItem(activeClub.nameFormatted, open, switchToActiveClub ? UI::TabItemFlags::SetSelected : UI::TabItemFlags::None)) {
-                    UI::Text(activeClub.nameStripped);
-                    UI::Separator();
+                int flags = UI::TabItemFlags::None;
+                if (switchToActiveClub) {
+                    flags |= UI::TabItemFlags::SetSelected;
+                    switchToActiveClub = false;
+                }
 
-                    ;
+                if (UI::BeginTabItem(activeClub.nameFormatted, open, flags)) {
+                    UI::BeginDisabled(API::getting || activeClub.getting);
+                    if (UI::Button(Icons::Download + " Get Campaigns"))
+                        startnew(CoroutineFunc(activeClub.GetCampaignsAsync));
+                    UI::EndDisabled();
+
+                    UI::SameLine();
+                    UI::Text("Campaigns: " + activeClub.campaigns.Length);
+
+                    if (UI::BeginTable("##table-campaigns", 2, UI::TableFlags::RowBg | UI::TableFlags::ScrollY)) {
+                        UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.0f, 0.0f, 0.0f, 0.5f));
+
+                        UI::TableSetupScrollFreeze(0, 1);
+                        UI::TableSetupColumn("name");
+                        UI::TableSetupColumn("id", UI::TableColumnFlags::WidthFixed, scale * 50.0f);
+                        UI::TableHeadersRow();
+
+                        UI::ListClipper clipper(activeClub.campaigns.Length);
+                        while (clipper.Step()) {
+                            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+                                Campaign@ campaign = activeClub.campaigns[i];
+
+                                UI::TableNextRow();
+
+                                UI::TableNextColumn();
+                                if (UI::Selectable(campaign.nameFormatted, false, UI::SelectableFlags::SpanAllColumns)) {
+                                    @activeCampaign = @campaign;
+                                    switchToActiveCampaign = true;
+                                }
+
+                                UI::TableNextColumn();
+                                UI::Text(tostring(campaign.id));
+                            }
+                        }
+
+                        UI::PopStyleColor();
+                        UI::EndTable();
+                    }
+
+                    UI::EndTabItem();
+                }
+
+                if (!open) {
+                    @activeCampaign = null;
+                    @activeClub = null;
+                }
+            }
+
+            if (activeCampaign !is null) {
+                bool open = true;
+
+                int flags = UI::TabItemFlags::None;
+                if (switchToActiveCampaign) {
+                    flags |= UI::TabItemFlags::SetSelected;
+                    switchToActiveCampaign = false;
+                }
+
+                if (UI::BeginTabItem(activeCampaign.nameFormatted, open, flags)) {
+                    UI::Text(activeCampaign.nameStripped);
 
                     UI::EndTabItem();
                 }
 
                 if (!open)
-                    @activeClub = null;
+                    @activeCampaign = null;
             }
 
         UI::EndTabBar();
