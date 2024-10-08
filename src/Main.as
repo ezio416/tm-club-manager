@@ -1,7 +1,7 @@
 // c 2024-10-08
 // m 2024-10-08
 
-dictionary@   accounts    = dictionary();
+Accounts@     accounts    = Accounts();
 const string  pluginColor = "\\$0B9";
 const string  pluginIcon  = Icons::Users;
 Meta::Plugin@ pluginMeta  = Meta::ExecutingPlugin();
