@@ -1,8 +1,10 @@
-// c 2023-09-26
-// m 2024-09-29
+// c 2024-10-08
+// m 2024-10-08
 
-Meta::Plugin@ thisPlugin = Meta::ExecutingPlugin();
-const string  title      = "\\$FFF" + Icons::Arrows + "\\$G " + thisPlugin.Name;
+const string  pluginColor = "\\$0B9";
+const string  pluginIcon  = Icons::Users;
+Meta::Plugin@ pluginMeta  = Meta::ExecutingPlugin();
+const string  pluginTitle = pluginColor + pluginIcon + "\\$G " + pluginMeta.Name;
 
 [Setting category="General" name="Enabled"]
 bool S_Enabled = true;
@@ -14,6 +16,7 @@ bool S_HideWithGame = true;
 bool S_HideWithOP = false;
 
 void Main() {
+    ;
 }
 
 void Render() {
@@ -24,10 +27,13 @@ void Render() {
     )
         return;
 
-    ;
+    if (UI::Begin(pluginTitle, S_Enabled, UI::WindowFlags::None)) {
+        ;
+    }
+    UI::End();
 }
 
 void RenderMenu() {
-    if (UI::MenuItem(title, "", S_Enabled))
+    if (UI::MenuItem(pluginTitle, "", S_Enabled))
         S_Enabled = !S_Enabled;
 }
