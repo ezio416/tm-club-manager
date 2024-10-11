@@ -1,5 +1,5 @@
 // c 2024-10-08
-// m 2024-10-10
+// m 2024-10-11
 
 bool GayButton(const string &in text, uint cycleTimeMs = 5000, float offset = 0.0f, bool reverse = false) {
     return UI::ButtonColored(text, GayHue(cycleTimeMs, offset, reverse));
@@ -15,6 +15,11 @@ float GayHue(uint cycleTimeMs = 5000, float offset = 0.0f, bool reverse = false)
     return normal;
 }
 
+string GetUUID(const string &in url) {
+    string[]@ parts = url.Replace("https://trackmania-prod-media-s3.cdn.ubi.com/media/image/live-api/", "").Split("/");
+    return parts.Length > 0 ? parts[0] : "";
+}
+
 void HoverTooltip(const string &in msg) {
     if (!UI::IsItemHovered())
         return;
@@ -22,22 +27,6 @@ void HoverTooltip(const string &in msg) {
     UI::BeginTooltip();
     UI::Text(msg);
     UI::EndTooltip();
-}
-
-uint LineNo(const string &in filename, const string &in uid) {
-    if (!IO::FileExists(filename)) {
-        print("file not found: " + filename);
-        return 0;
-    }
-
-    uint i;
-    IO::FileSource file(filename);
-    for (i = 1; !file.EOF(); i++) {
-        if (file.ReadLine().Contains(uid))
-            return i;
-    }
-
-    return 0;
 }
 
 string Zpad(uint num, uint digits = 2) {
