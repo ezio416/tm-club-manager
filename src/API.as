@@ -1,5 +1,5 @@
 // c 2024-10-08
-// m 2024-10-08
+// m 2024-10-09
 
 namespace API {
     const string audienceCore = "NadeoServices";
@@ -45,6 +45,31 @@ namespace API {
 
     Net::HttpRequest@ GetMeetAsync(const string &in endpoint, bool start = true) {
         return GetAsync(audienceLive, urlMeet + endpoint, start);
+    }
+
+    void GetMyClubsAsync() {
+        int        clubCount = -1;
+        const uint length    = 20;
+        uint       offset    = 0;
+
+        clubs = {};
+
+        while (int(clubs.Length) != clubCount) {
+            Net::HttpRequest@ req = GetLiveAsync("/api/token/club/mine?length=" + length + "&offset=" + offset);
+
+            Json::Value@ json = req.Json();
+
+            clubCount = int(json["clubCount"]);
+
+            Json::Value@ clubList = JsonExt::GetValue(json, "clubList", Json::Type::Array);
+            if (clubList.Length == 0)
+                break;
+
+            for (uint i = 0; i < clubList.Length; i++)
+                clubs.InsertLast(Club(clubList[i]));
+
+            offset += length;
+        }
     }
 
     Net::HttpRequest@ PostAsync(const string &in audience, const string &in url, const string &in body = "", bool start = true) {
