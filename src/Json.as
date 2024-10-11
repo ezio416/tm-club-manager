@@ -1,5 +1,5 @@
 // c 2024-10-08
-// m 2024-10-09
+// m 2024-10-10
 
 namespace JsonExt {
     bool CheckType(Json::Value@ json, Json::Type type = Json::Type::Object) {
@@ -17,9 +17,9 @@ namespace JsonExt {
         }
     }
 
-    int32 GetInt32(Json::Value@ json, const string &in key) {
+    int GetInt(Json::Value@ json, const string &in key) {
         try {
-            return int32(GetValue(json, key, Json::Type::Number));
+            return int(GetValue(json, key, Json::Type::Number));
         } catch {
             return -1;
         }
@@ -38,6 +38,14 @@ namespace JsonExt {
             return string(GetValue(json, key, Json::Type::String));
         } catch {
             return "";
+        }
+    }
+
+    uint32 GetUint(Json::Value@ json, const string &in key) {
+        try {
+            return uint(GetValue(json, key, Json::Type::Number));
+        } catch {
+            return uint(-1);
         }
     }
 
