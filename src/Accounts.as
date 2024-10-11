@@ -1,11 +1,14 @@
 // c 2024-10-08
-// m 2024-10-08
+// m 2024-10-10
+
+Accounts@ accounts = Accounts();
 
 class Accounts {
     private dictionary@ data = dictionary();
 
     void Add(const string &in id) {
-        data.Set(id, "");
+        if (!data.Exists(id))
+            data.Set(id, "");
     }
 
     void Add(const string &in id, const string &in name) {
@@ -28,6 +31,8 @@ class Accounts {
     }
 
     void RefreshAsync() {
+        trace("refreshing account names...");
         data = NadeoServices::GetDisplayNamesAsync(data.GetKeys());
+        trace("refreshed account names");
     }
 }
