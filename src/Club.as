@@ -86,9 +86,16 @@ class Club {
     string verticalUrlPngSmall;
     string walletUid;
 
-    ClubMember@ [] members;
+    ClubActivity@[] activities;
+    uint activityCount = 0;
     uint memberCount = 0;
-    bool requesting  = false;
+    ClubMember@[] members;
+    bool requestingActivities = false;
+    bool requestingMembers = false;
+
+    bool get_requesting() {
+        return requestingActivities || requestingMembers;
+    }
 
     Club(Json::Value@ json) {
         if (!JsonExt::CheckType(json))
@@ -122,12 +129,12 @@ class Club {
         iconUrlPngLarge             = JsonExt::GetString(json, "iconUrlPngLarge");
         iconUrlPngMedium            = JsonExt::GetString(json, "iconUrlPngMedium");
         iconUrlPngSmall             = JsonExt::GetString(json, "iconUrlPngSmall");
-        id                          = JsonExt::GetInt32(json, "id");
+        id                          = JsonExt::GetInt(json, "id");
         latestEditorAccountId       = JsonExt::GetString(json, "latestEditorAccountId");
         logoUrl                     = JsonExt::GetString(json, "logoUrl");
         metadata                    = JsonExt::GetString(json, "metadata");
         @name                       = FormattedString(JsonExt::GetString(json, "name"));
-        popularityLevel             = JsonExt::GetInt32(json, "popularityLevel");
+        popularityLevel             = JsonExt::GetInt(json, "popularityLevel");
         role                        = GetClubRole(JsonExt::GetString(json, "role"));
         screen16x1Theme             = JsonExt::GetString(json, "screen16x1Theme");
         screen16x1Url               = JsonExt::GetString(json, "screen16x1Url");
@@ -171,45 +178,125 @@ class Club {
         walletUid            = JsonExt::GetString(json, "walletUid");
     }
 
-    void GetMembersAsync() {
-        while (requesting)
+    void GetActivitiesAsync() {
+        while (requestingActivities)
             yield();
 
-        requesting = true;
+        requestingActivities = true;
 
-        trace("getting members of club: " + name.stripped);
+        trace("getting activities in club: " + name.stripped);
+
+        activities = {};
+
+        int        itemCount = -1;
+        const uint length    = 160;  // game's default?
+        int        max       = 0;
+        int        maxPage   = -1;
+        uint       min       = 0;
+        uint       offset    = 0;
+
+        for (int i = 0; i != maxPage; i++) {
+            min = activities.Length + 1;
+            if (itemCount > -1)
+                max = Math::Min(min + length - 1, itemCount);
+
+            const bool fetchingOne = int(min) + 1 == itemCount;
+
+            trace(
+                "\\$I" + name.stripped + "\\$I | getting activit" + (fetchingOne ? "y" : "ies") + ": " + min
+                + (fetchingOne ? "" : "-" + (max > 0 ? max : length))
+                + " / " + (itemCount > -1 ? tostring(itemCount) : "?????")
+            );
+
+            Net::HttpRequest@ req = API::GetLiveAsync(
+                "/api/token/club/" + id + "/activity?length=" + length + "&offset=" + offset
+                + (role == ClubRole::Admin ? "" : "&active=true")
+            );
+
+            Json::Value@ json = req.Json();
+
+            if (JsonExt::CheckType(json)) {
+                if (json.HasKey("itemCount")) {
+                    itemCount = JsonExt::GetInt(json, "itemCount");
+
+                    if (activityCount == 0)
+                        activityCount = itemCount;
+                } else {
+                    warn("missing key 'itemCount'");
+                    break;
+                }
+
+                if (json.HasKey("maxPage")) {
+                    maxPage = JsonExt::GetInt(json, "maxPage");
+                } else {
+                    warn("missing key 'maxPage'");
+                    break;
+                }
+
+                Json::Value@ activityList = JsonExt::GetValue(json, "activityList", Json::Type::Array);
+                if (activityList !is null) {
+                    if (activityList.Length == 0)
+                        break;
+
+                    for (uint j = 0; j < activityList.Length; j++) {
+                        try {
+                            activities.InsertLast(ClubActivity(activityList[j]));
+                            // print("inserted activity " + activities.Length);
+                        } catch {
+                            warn(getExceptionInfo());
+                        }
+                    }
+
+                } else {
+                    warn("something went wrong while getting club activities");
+                    // print("code: " + req.ResponseCode() + " | " + Json::Write(json));
+                    break;
+                }
+            }
+        }
+
+        trace("got " + activities.Length + " activities in club: " + name.stripped);
+
+        requestingActivities = false;
+    }
+
+    void GetMembersAsync() {
+        while (requestingMembers)
+            yield();
+
+        requestingMembers = true;
+
+        trace("getting members in club: " + name.stripped);
 
         members = {};
 
         int        itemCount = -1;
         const uint length    = 250;  // maximum allowed
-        // const uint length    = 5;
-        int        maxMember = 0;
+        int        max       = 0;
         int        maxPage   = -1;
-        uint       minMember = 0;
+        uint       min       = 0;
         uint       offset    = 0;
 
         for (int i = 0; i != maxPage; i++) {
-            minMember = members.Length + 1;
+            min = members.Length + 1;
             if (itemCount > -1)
-                maxMember = Math::Min(minMember + length - 1, itemCount);
+                max = Math::Min(min + length - 1, itemCount);
 
-            const bool fetchingOne = maxMember == itemCount;
+            const bool fetchingOne = int(min) + 1 == itemCount;
 
             trace(
-                "\\$I" + name.stripped + "\\$I | getting member" + (fetchingOne ? "" : "s") + ": " + minMember
-                + (fetchingOne ? "" : "-" + (maxMember > 0 ? maxMember : length))
+                "\\$I" + name.stripped + "\\$I | getting member" + (fetchingOne ? "" : "s") + ": " + min
+                + (fetchingOne ? "" : "-" + (max > 0 ? max : length))
                 + " / " + (itemCount > -1 ? tostring(itemCount) : "?????")
             );
 
             Net::HttpRequest@ req = API::GetLiveAsync("/api/token/club/" + id + "/member?length=" + length + "&offset=" + offset);
 
             Json::Value@ json = req.Json();
-            // print(Json::Write(json));
 
             if (JsonExt::CheckType(json)) {
                 if (json.HasKey("itemCount")) {
-                    itemCount = int(json["itemCount"]);
+                    itemCount = JsonExt::GetInt(json, "itemCount");
 
                     if (memberCount == 0)
                         memberCount = itemCount;
@@ -219,7 +306,7 @@ class Club {
                 }
 
                 if (json.HasKey("maxPage")) {
-                    maxPage = int(json["maxPage"]);
+                    maxPage = JsonExt::GetInt(json, "maxPage");
                 } else {
                     warn("missing key 'maxPage'");
                     break;
@@ -251,20 +338,23 @@ class Club {
 
         accounts.Refresh();
 
-        trace("got " + members.Length + " members of club: " + name.stripped);
+        trace("got " + members.Length + " members in club: " + name.stripped);
 
-        requesting = false;
+        requestingMembers = false;
     }
 }
 
 ClubRole GetClubRole(const string &in role) {
     if (role == "Admin")
         return ClubRole::Admin;
-    else if (role == "Content_Creator")
+
+    if (role == "Content_Creator")
         return ClubRole::ContentCreator;
-    else if (role == "Creator")
+
+    if (role == "Creator")
         return ClubRole::Creator;
-    else if (role == "Member")
+
+    if (role == "Member")
         return ClubRole::Member;
 
     warn("unknown role: " + role);

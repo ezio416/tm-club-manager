@@ -1,5 +1,5 @@
 // c 2024-10-08
-// m 2024-10-09
+// m 2024-10-11
 
 namespace API {
     const string audienceCore = "NadeoServices";
@@ -53,6 +53,7 @@ namespace API {
         uint       offset    = 0;
 
         clubs = {};
+        activeClubs = {};
 
         while (int(clubs.Length) != clubCount) {
             Net::HttpRequest@ req = GetLiveAsync("/api/token/club/mine?length=" + length + "&offset=" + offset);
