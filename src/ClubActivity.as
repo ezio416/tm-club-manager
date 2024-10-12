@@ -1,5 +1,5 @@
 // c 2024-10-10
-// m 2024-10-10
+// m 2024-10-11
 
 enum ActivityType {
     Advertisement,
@@ -34,6 +34,7 @@ class ClubActivity {
     string       mediaUrlPngSmall;
     string       mediaTheme;
     FormattedString@ name;
+    Club@ parent;
     bool password        = false;
     int  position        = -1;
     bool public          = false;

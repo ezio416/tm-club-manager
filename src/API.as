@@ -53,7 +53,7 @@ namespace API {
         uint       offset    = 0;
 
         clubs = {};
-        activeClubs = {};
+        ClearActiveClubs();
 
         while (int(clubs.Length) != clubCount) {
             Net::HttpRequest@ req = GetLiveAsync("/api/token/club/mine?length=" + length + "&offset=" + offset);

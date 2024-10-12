@@ -1,5 +1,5 @@
 // c 2024-10-08
-// m 2024-10-10
+// m 2024-10-11
 
 enum ClubRole {
     Admin,
@@ -86,11 +86,14 @@ class Club {
     string verticalUrlPngSmall;
     string walletUid;
 
+    ClubActivity@[] activeActivities;
+    int activeActivityIndex = -1;
     ClubActivity@[] activities;
     uint activityCount = 0;
+    bool requestingActivities = false;
+
     uint memberCount = 0;
     ClubMember@[] members;
-    bool requestingActivities = false;
     bool requestingMembers = false;
 
     bool get_requesting() {
@@ -178,6 +181,13 @@ class Club {
         walletUid            = JsonExt::GetString(json, "walletUid");
     }
 
+    void ClearActiveActivities() {
+        while (activeActivities.Length > 0) {
+            @activeActivities[0] = null;
+            activeActivities.RemoveAt(0);
+        }
+    }
+
     void GetActivitiesAsync() {
         while (requestingActivities)
             yield();
@@ -240,8 +250,9 @@ class Club {
 
                     for (uint j = 0; j < activityList.Length; j++) {
                         try {
-                            activities.InsertLast(ClubActivity(activityList[j]));
-                            // print("inserted activity " + activities.Length);
+                            ClubActivity@ activity = ClubActivity(activityList[j]);
+                            @activity.parent = this;
+                            activities.InsertLast(@activity);
                         } catch {
                             warn(getExceptionInfo());
                         }
@@ -341,6 +352,303 @@ class Club {
         trace("got " + members.Length + " members in club: " + name.stripped);
 
         requestingMembers = false;
+    }
+
+    void RenderTabActivity(ClubActivity@ activity) {
+        bool open = true;
+
+        int flags = UI::TabItemFlags::None;
+        if (activeActivities.FindByRef(activity) == activeActivityIndex) {
+            flags |= UI::TabItemFlags::SetSelected;
+            activeActivityIndex = -1;
+        }
+
+        if (UI::BeginTabItem(activity.name.stripped + "##" + activity.id, open, flags)) {
+            if (UI::BeginTable("##table-activity-header", 2)) {
+                UI::TableSetupColumn("name", UI::TableColumnFlags::WidthStretch);
+                UI::TableSetupColumn("type", UI::TableColumnFlags::WidthFixed);
+
+                UI::TableNextRow();
+
+                UI::TableNextColumn();
+                UI::PushFont(fontHeader);
+                UI::Text(activity.name.formatted);
+                UI::PopFont();
+
+                UI::TableNextColumn();
+                UI::Text("\\$I" + tostring(activity.activityType));
+
+                UI::EndTable();
+            }
+
+            if (UI::BeginTable("##table-activity-info-header" + activity.id, 2)) {
+                UI::TableSetupColumn("header", UI::TableColumnFlags::WidthStretch);
+                UI::TableSetupColumn("button", UI::TableColumnFlags::WidthFixed);
+
+                UI::TableNextRow();
+
+                UI::TableNextColumn();
+                UI::SeparatorText("Info");
+
+                UI::TableNextColumn();
+                UI::Button(Icons::ExclamationTriangle);
+
+                UI::EndTable();
+            }
+
+            UI::Text("id: " + activity.id);
+            UI::Text("active: " + activity.active);
+            UI::Text("items: " + activity.itemsCount);
+            UI::Text("public: " + activity.public);
+
+            if (activity.activityType == ActivityType::Campaign)
+                RenderActivityCampaign(activity);
+
+            UI::EndTabItem();
+        }
+
+        if (!open) {
+            const int index = activeActivities.FindByRef(activity);
+            if (index > -1)
+                activeActivities.RemoveAt(index);
+            // for (uint i = 0; i < activeActivities.Length; i++) {
+            //     if (activeActivities[i].id == id) {
+            //         activeActivities.RemoveAt(i);
+            //         break;
+            //     }
+            // }
+        }
+    }
+
+    void RenderActivityCampaign(ClubActivity@ activity) {
+        if (activity.activityType != ActivityType::Campaign)
+            return;
+    }
+
+    void RenderTabSelf() {
+        bool open = true;
+
+        int flags = UI::TabItemFlags::None;
+        if (activeClubs.FindByRef(this) == activeClubIndex) {
+            flags |= UI::TabItemFlags::SetSelected;
+            activeClubIndex = -1;
+        }
+
+        if (UI::BeginTabItem(name.stripped + "##" + id, open, flags)) {
+            UI::BeginTabBar("##tabbar-activities" + id);
+
+            if (UI::BeginTabItem(Icons::Home + " Club")) {
+                if (UI::BeginTable("##table-club-header", 2)) {
+                    UI::TableSetupColumn("header", UI::TableColumnFlags::WidthStretch);
+                    UI::TableSetupColumn("role", UI::TableColumnFlags::WidthFixed);
+
+                    UI::TableNextRow();
+
+                    UI::TableNextColumn();
+                    UI::PushFont(fontHeader);
+                    UI::Text(name.formatted);
+                    UI::PopFont();
+
+                    // if (activeActivities.Length > 0) {
+                    //     UI::SameLine();
+                    //     UI::Text("active: " + activeActivities.Length);
+                    // }
+
+                    UI::TableNextColumn();
+                    UI::Text("\\$I" + tostring(role));
+
+                    UI::EndTable();
+                }
+
+                const vec2 spaceAvail = UI::GetContentRegionAvail();
+                const vec2 childSize = vec2(spaceAvail.x, (spaceAvail.y - scale * 17.0f) * 0.5f);
+
+                if (UI::BeginChild("##child-activities" + id, childSize)) {
+                    if (UI::BeginTable("##table-club-activity-header" + id, 2)) {
+                        UI::TableSetupColumn("header", UI::TableColumnFlags::WidthStretch);
+                        UI::TableSetupColumn("button", UI::TableColumnFlags::WidthFixed);
+
+                        UI::TableNextRow();
+
+                        UI::TableNextColumn();
+                        UI::PushFont(fontSubHeader);
+                        UI::SeparatorText((requestingActivities ? "\\$888" : "") + "Activities (" + activityCount + ")");
+                        UI::PopFont();
+                        if (requestingActivities)
+                            HoverTooltip("patience, child...\n" + activities.Length + " / " + activityCount);
+
+                        UI::TableNextColumn();
+                        UI::BeginDisabled(requestingActivities);
+                        const bool refresh = activityCount > 0;
+                        if (
+                            (refresh && UI::Button(Icons::Refresh + "##button-activities" + id))
+                            || (!refresh && GayButton(Icons::Download + "##button-activities" + id, 2000, 0.5f))
+                        )
+                            startnew(CoroutineFunc(GetActivitiesAsync));
+                        UI::EndDisabled();
+
+                        UI::EndTable();
+                    }
+
+                    const vec2 childSpaceAvail = UI::GetContentRegionAvail();
+
+                    const int cols = 5;
+                    const int rows = int(Math::Ceil(float(activities.Length) / float(cols)));
+
+                    if (UI::BeginTable("##table-activities", 5, UI::TableFlags::ScrollY)) {
+                        for (uint i = 0; i < cols; i++)
+                            UI::TableSetupColumn("col" + i, UI::TableColumnFlags::WidthFixed);
+
+                        UI::ListClipper clipper(rows);
+                        while (clipper.Step()) {
+                            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+                                UI::TableNextRow();
+
+                                for (uint j = 0; j < 5; j++) {
+                                    const uint index = i * 5 + j;
+                                    if (index >= activities.Length)
+                                        break;
+
+                                    ClubActivity@ activity;
+
+                                    try {
+                                        @activity = activities[index];
+                                    } catch {
+                                        warn(getExceptionInfo());
+                                        throw("activities.Length: " + activities.Length + " | index: " + index);
+                                    }
+
+                                    UI::TableNextColumn();
+
+                                    if (j > 0 && j % 5 == 0)
+                                        UI::NewLine();
+
+                                    const float factor = ((childSpaceAvail.x - scale * 49.0f) / 5.0f) / iconSize.x;
+                                    const vec2 activityIconSize = iconSize * factor;
+
+                                    const vec2 pre = UI::GetCursorPos();
+
+                                    if (Textures::Load(activity.mediaUrlPngSmall) !is null)
+                                        Textures::Render(activity.mediaUrlPngSmall, activityIconSize);
+                                    else
+                                        Textures::Render("assets/club_blank.png", activityIconSize, true);
+
+                                    UI::SetCursorPos(pre);
+                                    if (UI::InvisibleButton("##invisbutton-activity" + activity.id, activityIconSize)) {
+                                        // print("activity clicked: " + activity.id);
+
+                                        const int activityIndex = activeActivities.FindByRef(activity);
+                                        if (activityIndex == -1) {
+                                            activeActivityIndex = activeActivities.Length;
+                                            activeActivities.InsertLast(@activity);
+                                        } else
+                                            activeActivityIndex = activityIndex;
+                                    }
+                                    if (UI::IsItemHovered()) {
+                                        UI::SetCursorPos(pre);
+
+                                        Textures::Render(
+                                            "assets/1x1_white_alpha" + (UI::IsMouseDown() ? 1 : 2) + "0.png",
+                                            activityIconSize,
+                                            true
+                                        );
+                                    }
+
+                                    UI::Text(activity.name.formatted.Replace("|ClubActivity|", ""));
+                                    UI::Text("\\$888" + tostring(activity.activityType));
+
+                                    if (j % 5 == 1)
+                                        UI::NewLine();
+                                }
+                            }
+                        }
+
+                        UI::EndTable();
+                    }
+                }
+                UI::EndChild();
+
+                if (UI::BeginChild("##child-members" + id, childSize)) {
+                    if (UI::BeginTable("##table-club-member-header" + id, 2)) {
+                        UI::TableSetupColumn("header", UI::TableColumnFlags::WidthStretch);
+                        UI::TableSetupColumn("button", UI::TableColumnFlags::WidthFixed);
+
+                        UI::TableNextRow();
+
+                        UI::TableNextColumn();
+                        UI::PushFont(fontSubHeader);
+                        UI::SeparatorText((requestingMembers ? "\\$888" : "") + "Members (" + memberCount + ")");
+                        UI::PopFont();
+                        if (requestingMembers)
+                            HoverTooltip("patience, child...\n" + members.Length + " / " + memberCount);
+
+                        UI::TableNextColumn();
+                        UI::BeginDisabled(requestingMembers);
+                        const bool refresh = activityCount > 0;
+                        if (
+                            (refresh && UI::Button(Icons::Refresh + "##button-members" + id))
+                            || (!refresh && GayButton(Icons::Download + "##button-members" + id, 2000, 0.5f))
+                        )
+                            startnew(CoroutineFunc(GetMembersAsync));
+                        UI::EndDisabled();
+
+                        UI::EndTable();
+                    }
+
+                    if (UI::BeginTable("##table-members", 3, UI::TableFlags::RowBg | UI::TableFlags::ScrollY)) {
+                        UI::PushStyleColor(UI::Col::TableRowBgAlt, colorRowBg);
+
+                        UI::TableSetupScrollFreeze(0, 1);
+                        UI::TableSetupColumn("Name", UI::TableColumnFlags::WidthFixed);
+                        UI::TableSetupColumn("Role", UI::TableColumnFlags::WidthFixed);
+                        UI::TableSetupColumn("Since", UI::TableColumnFlags::WidthFixed);
+
+                        UI::ListClipper clipper(members.Length);
+                        while (clipper.Step()) {
+                            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
+                                ClubMember@ member = members[i];
+
+                                UI::TableNextRow();
+
+                                UI::TableNextColumn();
+                                UI::Text(member.name + (member.vip ? "  " + Icons::UserPlus : ""));
+
+                                UI::TableNextColumn();
+                                UI::Text(
+                                    (member.role == ClubRole::ContentCreator ? "Content Creator" : tostring(member.role))
+                                    + (member.vip ? " - VIP" : "")
+                                );
+
+                                UI::TableNextColumn();
+                                UI::Text(Time::FormatString("%Y-%m-%d", member.timestamp));
+                            }
+                        }
+
+                        UI::PopStyleColor();
+                        UI::EndTable();
+                    }
+                }
+                UI::EndChild();
+
+                UI::EndTabItem();
+            }
+
+            for (uint i = 0; i < activeActivities.Length; i++)
+                RenderTabActivity(activeActivities[i]);
+
+            UI::EndTabBar();
+
+            UI::EndTabItem();
+        }
+
+        if (!open) {
+            for (uint i = 0; i < activeClubs.Length; i++) {
+                if (activeClubs[i].id == id) {
+                    activeClubs.RemoveAt(i);
+                    break;
+                }
+            }
+        }
     }
 }
 
