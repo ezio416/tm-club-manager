@@ -1,6 +1,3 @@
-// c 2024-10-10
-// m 2024-10-11
-
 const string cache = IO::FromStorageFolder("icons");
 
 namespace Textures {

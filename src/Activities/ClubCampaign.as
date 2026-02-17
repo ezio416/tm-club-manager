@@ -1,6 +1,3 @@
-// c 2024-10-11
-// m 2024-10-12
-
 class ClubCampaign : ClubActivity {
     string clubDecalUrl;
     int    popularityLevel      = -1;

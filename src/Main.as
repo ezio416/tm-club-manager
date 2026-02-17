@@ -1,6 +1,3 @@
-// c 2024-10-08
-// m 2024-10-11
-
 int activeClubIndex = -1;
 Club@[] activeClubs;
 bool clubAccess = false;

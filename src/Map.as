@@ -1,6 +1,3 @@
-// c 2024-10-12
-// m 2024-10-12
-
 class Map {
     string id;
     string mapId;

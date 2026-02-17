@@ -1,6 +1,3 @@
-// c 2024-10-10
-// m 2024-10-10
-
 class ClubMember {
     bool     hasFeatured = false;
     string   id;

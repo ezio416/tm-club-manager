@@ -1,6 +1,3 @@
-// c 2024-10-08
-// m 2024-10-12
-
 enum ClubRole {
     Admin,
     ContentCreator,

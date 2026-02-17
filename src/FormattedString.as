@@ -1,6 +1,3 @@
-// c 2024-10-09
-// m 2024-10-10
-
 class FormattedString {
     string formatted;
     string lower;

@@ -1,6 +1,3 @@
-// c 2024-10-08
-// m 2024-10-11
-
 namespace JsonExt {
     bool CheckType(Json::Value@ json, Json::Type type = Json::Type::Object) {
         if (json is null)

@@ -1,6 +1,3 @@
-// c 2024-10-08
-// m 2024-10-10
-
 Accounts@ accounts = Accounts();
 
 class Accounts {

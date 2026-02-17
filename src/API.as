@@ -1,6 +1,3 @@
-// c 2024-10-08
-// m 2024-10-11
-
 namespace API {
     const string audienceCore = "NadeoServices";
     const string audienceLive = "NadeoLiveServices";

@@ -1,6 +1,3 @@
-// c 2024-10-08
-// m 2024-10-11
-
 bool GayButton(const string &in text, uint cycleTimeMs = 5000, float offset = 0.0f, bool reverse = false) {
     return UI::ButtonColored(text, GayHue(cycleTimeMs, offset, reverse));
 }
