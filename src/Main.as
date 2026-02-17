@@ -1,6 +1,7 @@
 // c 2024-09-27
-// m 2024-09-27
+// m 2024-10-06
 
+dictionary@  accounts               = dictionary();
 Campaign@    activeCampaign;
 Club@        activeClub;
 Club@[]      clubs;
@@ -8,7 +9,7 @@ bool         clubAccess             = false;
 const float  scale                  = UI::GetScale();
 bool         switchToActiveCampaign = false;
 bool         switchToActiveClub     = false;
-const string title                  = "\\$0B9" + Icons::Random + "\\$G Mixed Club Campaigns";
+const string title                  = "\\$0B9" + Icons::Users + "\\$G " + Meta::ExecutingPlugin().Name;
 string[]     uids;
 
 void Main() {
@@ -33,6 +34,23 @@ void Render() {
     )
         return;
 
+    // RenderOld();
+
+    if (UI::Begin(title, S_Enabled, UI::WindowFlags::None)) {
+        ;
+    }
+    UI::End();
+}
+
+void RenderMenu() {
+    if (!clubAccess)
+        return;
+
+    if (UI::MenuItem(title, "", S_Enabled))
+        S_Enabled = !S_Enabled;
+}
+
+void RenderOld() {
     if (UI::Begin(title, S_Enabled, UI::WindowFlags::None)) {
         UI::BeginTabBar("tabbar-main");
             if (UI::BeginTabItem(Icons::ListUl + " Club List")) {
@@ -48,9 +66,9 @@ void Render() {
                     UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.0f, 0.0f, 0.0f, 0.5f));
 
                     UI::TableSetupScrollFreeze(0, 1);
-                    UI::TableSetupColumn("name");
-                    UI::TableSetupColumn("id",    UI::TableColumnFlags::WidthFixed, scale * 50.0f);
-                    UI::TableSetupColumn("admin", UI::TableColumnFlags::WidthFixed, scale * 50.0f);
+                    UI::TableSetupColumn("Name");
+                    UI::TableSetupColumn("ID",    UI::TableColumnFlags::WidthFixed, scale * 50.0f);
+                    UI::TableSetupColumn("Admin", UI::TableColumnFlags::WidthFixed, scale * 50.0f);
                     UI::TableHeadersRow();
 
                     UI::ListClipper clipper(clubs.Length);
@@ -104,8 +122,8 @@ void Render() {
                         UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.0f, 0.0f, 0.0f, 0.5f));
 
                         UI::TableSetupScrollFreeze(0, 1);
-                        UI::TableSetupColumn("name");
-                        UI::TableSetupColumn("id", UI::TableColumnFlags::WidthFixed, scale * 50.0f);
+                        UI::TableSetupColumn("Name");
+                        UI::TableSetupColumn("ID", UI::TableColumnFlags::WidthFixed, scale * 50.0f);
                         UI::TableHeadersRow();
 
                         UI::ListClipper clipper(activeClub.campaigns.Length);
@@ -155,25 +173,59 @@ void Render() {
                     UI::EndDisabled();
 
                     UI::SameLine();
-                    UI::Text("Maps: " + activeCampaign.uids.Length);
+                    UI::Text("Maps: " + activeCampaign.mapsArr.Length);
 
-                    if (UI::BeginTable("##table-maps", 1, UI::TableFlags::RowBg | UI::TableFlags::ScrollY)) {
+                    UI::BeginDisabled(API::sending || activeCampaign.sending || !activeCampaign.club.admin || activeCampaign.mapsArr.Length == 0);
+                    if (UI::Button(Icons::Upload + " Send New UIDs"))
+                        startnew(CoroutineFunc(activeCampaign.SendUpdateAsync));
+                    UI::EndDisabled();
+                    if (!activeCampaign.club.admin)
+                        HoverTooltip("You need to be an admin of this club to edit campaigns");
+
+                    if (UI::BeginTable("##table-maps", 5, UI::TableFlags::RowBg | UI::TableFlags::ScrollY)) {
                         UI::PushStyleColor(UI::Col::TableRowBgAlt, vec4(0.0f, 0.0f, 0.0f, 0.5f));
 
                         UI::TableSetupScrollFreeze(0, 1);
-                        UI::TableSetupColumn("uid");
+                        UI::TableSetupColumn("#",       UI::TableColumnFlags::WidthFixed, scale * 20.0f);
+                        UI::TableSetupColumn("UID",     UI::TableColumnFlags::WidthFixed, scale * 250.0f);
+                        UI::TableSetupColumn("Name");
+                        UI::TableSetupColumn("Author");
+                        UI::TableSetupColumn("New UID", UI::TableColumnFlags::WidthFixed, scale * 300.0f);
                         UI::TableHeadersRow();
 
-                        UI::ListClipper clipper(activeCampaign.uids.Length);
-                        while (clipper.Step()) {
-                            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
-                                const string uid = activeCampaign.uids[i];
+                        for (uint i = 0; i < 25; i++) {
+                            Map@ map;
+                            if (i < activeCampaign.mapsArr.Length)
+                                @map = activeCampaign.mapsArr[i];
 
-                                UI::TableNextRow();
+                            UI::TableNextRow();
 
-                                UI::TableNextColumn();
-                                UI::Text(uid);
+                            UI::TableNextColumn();
+                            UI::Text(ZPad2(i + 1));
+
+                            UI::TableNextColumn();
+                            if (map !is null) {
+                                if (UI::Selectable(map.uid, false))
+                                    IO::SetClipboard(map.uid);
+                                HoverTooltip("click to copy");
                             }
+
+                            UI::TableNextColumn();
+                            if (map !is null)
+                                UI::Text(map.nameFormatted);
+
+                            UI::TableNextColumn();
+                            if (map !is null)
+                                UI::Text(accounts.Exists(map.authorId) ? string(accounts[map.authorId]) : "");
+
+                            UI::TableNextColumn();
+                            const string display = activeCampaign.newUids[i].Length > 0 ? activeCampaign.newUids[i] : map !is null ? map.uid : "";
+                            UI::SetNextItemWidth(300.0f);
+                            UI::BeginDisabled(!activeCampaign.club.admin);
+                            activeCampaign.newUids[i] = UI::InputText("###uid-input-" + i, display);
+                            UI::EndDisabled();
+                            if (!activeCampaign.club.admin)
+                                HoverTooltip("You need to be an admin of this club to edit campaigns");
                         }
 
                         UI::PopStyleColor();
@@ -190,12 +242,4 @@ void Render() {
         UI::EndTabBar();
     }
     UI::End();
-}
-
-void RenderMenu() {
-    if (!clubAccess)
-        return;
-
-    if (UI::MenuItem(title, "", S_Enabled))
-        S_Enabled = !S_Enabled;
 }

@@ -8,6 +8,10 @@ bool CheckJsonType(Json::Value@ json, Json::Type type = Json::Type::Object) {
     return json.GetType() == type;
 }
 
+void GetAccountNames() {
+    accounts = NadeoServices::GetDisplayNamesAsync(accounts.GetKeys());
+}
+
 Json::Value@ GetJsonValue(Json::Value@ json, const string &in key, Json::Type type = Json::Type::Object) {
     if (json is null || !json.HasKey(key))
         return null;
@@ -18,4 +22,17 @@ Json::Value@ GetJsonValue(Json::Value@ json, const string &in key, Json::Type ty
         return null;
 
     return value;
+}
+
+void HoverTooltip(const string &in msg) {
+    if (!UI::IsItemHovered())
+        return;
+
+    UI::BeginTooltip();
+        UI::Text(msg);
+    UI::EndTooltip();
+}
+
+string ZPad2(int num) {
+    return (num < 10 ? "0" : "") + num;
 }

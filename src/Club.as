@@ -31,7 +31,7 @@ class Club {
         getting = true;
 
         int        itemCount = -1;
-        const uint length    = 20;
+        const uint length    = 160;
         uint       offset    = 0;
 
         trace("getting campaigns for club \"" + nameStripped + "\"");
@@ -43,7 +43,7 @@ class Club {
 
             Net::HttpRequest@ req = API::GetAsync(
                 API::audienceLive,
-                NadeoServices::BaseURLLive() + "/api/token/club/" + id + "/activity?length=" + length + "&offset=" + offset + "&active=true"
+                NadeoServices::BaseURLLive() + "/api/token/club/" + id + "/activity?length=" + length + "&offset=" + offset + "&active=1"
             );
 
             Json::Value@ json = req.Json();

@@ -6,6 +6,7 @@ namespace API {
     bool         getting      = false;
     uint64       lastRequest  = 0;
     const uint64 minimumWait  = 1000;
+    bool         sending      = false;
 
     Net::HttpRequest@ GetAsync(const string &in audience, const string &in url) {
         while (!NadeoServices::IsAuthenticated(audience) || getting)
@@ -72,6 +73,24 @@ namespace API {
         }
 
         trace("got my clubs (" + clubs.Length + ")");
+    }
+
+    Net::HttpRequest@ PostAsync(const string &in audience, const string &in url, const string &in body = "") {
+        while (!NadeoServices::IsAuthenticated(audience))
+            yield();
+
+        sending = true;
+
+        WaitAsync();
+
+        Net::HttpRequest@ req = NadeoServices::Post(audience, url, body);
+        req.Start();
+        while (!req.Finished())
+            yield();
+
+        sending = false;
+
+        return req;
     }
 
     void WaitAsync() {
