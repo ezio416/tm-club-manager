@@ -1,5 +1,5 @@
 // c 2024-10-08
-// m 2024-10-11
+// m 2024-10-12
 
 enum ClubRole {
     Admin,
@@ -251,6 +251,14 @@ class Club {
                     for (uint j = 0; j < activityList.Length; j++) {
                         try {
                             ClubActivity@ activity = ClubActivity(activityList[j]);
+                            if (activity.type == ActivityType::Campaign) {
+                                @activity = null;
+                                ClubCampaign@ campaign = ClubCampaign(activityList[j]);
+                                @campaign.clubName = name;
+                                @campaign.parent = this;
+                                activities.InsertLast(@campaign);
+                                continue;
+                            }
                             @activity.parent = this;
                             activities.InsertLast(@activity);
                         } catch {
@@ -376,7 +384,7 @@ class Club {
                 UI::PopFont();
 
                 UI::TableNextColumn();
-                UI::Text("\\$I" + tostring(activity.activityType));
+                UI::Text("\\$I" + tostring(activity.type));
 
                 UI::EndTable();
             }
@@ -401,7 +409,7 @@ class Club {
             UI::Text("items: " + activity.itemsCount);
             UI::Text("public: " + activity.public);
 
-            if (activity.activityType == ActivityType::Campaign)
+            if (activity.type == ActivityType::Campaign)
                 RenderActivityCampaign(activity);
 
             UI::EndTabItem();
@@ -421,8 +429,39 @@ class Club {
     }
 
     void RenderActivityCampaign(ClubActivity@ activity) {
-        if (activity.activityType != ActivityType::Campaign)
+        if (activity.type != ActivityType::Campaign)
             return;
+
+        UI::Separator();
+
+        ClubCampaign@ campaign = cast<ClubCampaign@>(activity);
+        if (campaign is null)
+            return;
+
+        UI::Text("it's a campaign!");
+        UI::Text(campaign.clubName.stripped);
+        UI::Text(campaign.creatorAccountId);
+        UI::Text(tostring(campaign.maps.Length));
+
+        int index = -1;
+
+        for (uint i = 0; i < 5; i++) {
+            if (i > 0 && i % 5 > 0)
+                UI::SameLine();
+
+            for (uint j = 0; j < 5; j++) {
+                if ((index = i * 5 + j) >= int(campaign.maps.Length))
+                    break;
+
+                Map@ map = campaign.maps[index];
+                if (map !is null) {
+                    UI::Text(map.mapUid);
+                } else
+                    UI::Text("null map");
+            }
+        }
+
+        UI::Text("that's all folks");
     }
 
     void RenderTabSelf() {
@@ -555,7 +594,7 @@ class Club {
                                     }
 
                                     UI::Text(activity.name.formatted.Replace("|ClubActivity|", ""));
-                                    UI::Text("\\$888" + tostring(activity.activityType));
+                                    UI::Text("\\$888" + tostring(activity.type));
 
                                     if (j % 5 == 1)
                                         UI::NewLine();

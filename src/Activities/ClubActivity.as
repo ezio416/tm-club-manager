@@ -1,5 +1,5 @@
 // c 2024-10-10
-// m 2024-10-11
+// m 2024-10-12
 
 enum ActivityType {
     Advertisement,
@@ -17,7 +17,6 @@ enum ActivityType {
 class ClubActivity {
     bool         active       = false;
     int          activityId   = -1;
-    ActivityType activityType = ActivityType::Unknown;
     int          campaignId   = -1;
     int          clubId       = -1;
     string       creatorAccountId;
@@ -39,14 +38,18 @@ class ClubActivity {
     int  position        = -1;
     bool public          = false;
     int targetActivityId = -1;
+    ActivityType type = ActivityType::Unknown;
 
+    Map@[] maps;
+    bool requesting = false;
+
+    ClubActivity() { }
     ClubActivity(Json::Value@ json) {
         if (!JsonExt::CheckType(json))
             throw("can't initialize ClubActivity");
 
         active                = JsonExt::GetBool(json, "active");
         activityId            = JsonExt::GetInt(json, "activityId");
-        activityType          = GetActivityType(JsonExt::GetString(json, "activityType"));
         campaignId            = JsonExt::GetInt(json, "campaignId");
         clubId                = JsonExt::GetInt(json, "clubId");
         creatorAccountId      = JsonExt::GetString(json, "creatorAccountId");
@@ -67,6 +70,50 @@ class ClubActivity {
         position              = JsonExt::GetInt(json, "position");
         public                = JsonExt::GetBool(json, "public");
         targetActivityId      = JsonExt::GetInt(json, "targetActivityId");
+        type                  = GetActivityType(JsonExt::GetString(json, "activityType"));
+    }
+
+    void GetMapInfosAsync() {
+        while (requesting)
+            yield();
+
+        requesting = true;
+
+        Net::HttpRequest@ req = API::GetLiveAsync("/api/token/");
+
+        Json::Value@ json = req.Json();
+        ;
+
+        requesting = false;
+    }
+
+    void RenderTabSelf() {
+        bool open = true;
+
+        int flags = UI::TabItemFlags::None;
+        if (parent.activeActivities.FindByRef(this) == parent.activeActivityIndex) {
+            flags |= UI::TabItemFlags::SetSelected;
+            parent.activeActivityIndex = -1;
+        }
+
+        if (UI::BeginTabItem(name.stripped + "##" + id, open, flags)) {
+            if (UI::BeginTable("##table-activity-header", 2)) {
+                UI::TableSetupColumn("name", UI::TableColumnFlags::WidthStretch);
+                UI::TableSetupColumn("type", UI::TableColumnFlags::WidthFixed);
+
+                UI::TableNextRow();
+
+                UI::TableNextColumn();
+                UI::PushFont(fontHeader);
+                UI::Text(name.formatted);
+                UI::PopFont();
+
+                UI::TableNextColumn();
+                UI::Text("\\$I" + tostring(type));
+
+                UI::EndTable();
+            }
+        }
     }
 }
 

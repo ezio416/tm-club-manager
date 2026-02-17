@@ -1,5 +1,5 @@
 // c 2024-10-08
-// m 2024-10-10
+// m 2024-10-11
 
 namespace JsonExt {
     bool CheckType(Json::Value@ json, Json::Type type = Json::Type::Object) {
@@ -53,7 +53,7 @@ namespace JsonExt {
         if (json is null || !json.HasKey(key))
             return null;
 
-        Json::Value@ value = json[key];
+        Json::Value@ value = json.Get(key);
 
         if (!CheckType(value, type))
             return null;
